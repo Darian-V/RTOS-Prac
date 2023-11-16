@@ -11,7 +11,7 @@
 #define RxPin GPIO_NUM_18
 
 //TWAI Config
-#define TWAIMode TWAI_MODE_NORMAL //For testing change to TWAI_MODE_NO_ACK
+#define TWAIMode TWAI_MODE_NO_ACK //For testing change to TWAI_MODE_NO_ACK
 static const char *NodeName = "BMS"; //TAG
 static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TxPin,RxPin,TWAIMode); //Setting TWAI settings using macro initializers
 static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();
@@ -34,33 +34,36 @@ static const int ID = 0x555;
 } */
 
 static void TWAI_Transmit (void *arg) {
+    while(1) {
     twai_message_t txData;
     txData.identifier = ID;
-    txData.data_length_code = 4;
-    for (int i = 0; i < 4; i++) {
-    txData.data[i] = 0;
-    }
+    txData.data_length_code = 5;
+    txData.data = [1,2,3];
     txData.self = 1;
-
     if (twai_transmit(&txData,portMAX_DELAY) == ESP_OK) {
         ESP_LOGI(NodeName, "Message qued for transmission");
     } else {
         ESP_LOGI(NodeName,"Error: Message not qued for tranmission"); //Add TWAI error code here
     }
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    
 }
 
 static void TWAI_Recieve(void *arg) {
-    twai_message_t rxData;
+    
 
     //Recieve 
+    while (1) {
+    twai_message_t rxData;
     if (twai_receive(&rxData,pdMS_TO_TICKS(1000))== ESP_OK) {
         printf("Messsage Recieved\n");
     } else {
         printf("Failed to recieve message\n");
     }
     ESP_LOGI(NodeName,"Recieved Message: %s", rxData.data);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(500)); 
+    }
 }
 
 void app_main(void) {
@@ -77,6 +80,6 @@ void app_main(void) {
         ESP_LOGI(NodeName,"Failed to start driver\n");
     }
 
-    xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,0);
+    xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,1);
 }
