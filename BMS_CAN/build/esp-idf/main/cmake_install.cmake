@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/main
+# Install script for directory: C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

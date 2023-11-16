@@ -5,18 +5,18 @@ cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
   "C:/Users/Darian/esp/esp-idf/components/bootloader/subproject"
-  "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader"
-  "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader-prefix"
-  "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader-prefix/tmp"
-  "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp"
-  "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader-prefix/src"
-  "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp"
+  "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader"
+  "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader-prefix"
+  "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader-prefix/tmp"
+  "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp"
+  "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader-prefix/src"
+  "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp"
 )
 
 set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
-    file(MAKE_DIRECTORY "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
+    file(MAKE_DIRECTORY "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
 endforeach()
 if(cfgdir)
-  file(MAKE_DIRECTORY "C:/Users/Darian/Desktop/RTOS-CAN/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp${cfgdir}") # cfgdir has leading slash
+  file(MAKE_DIRECTORY "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build/bootloader-prefix/src/bootloader-stamp${cfgdir}") # cfgdir has leading slash
 endif()

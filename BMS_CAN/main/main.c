@@ -22,49 +22,45 @@ static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 #define RX_TSK_PRIO 9
 #define CTRL_TSK_PRIO 10
 
-u_int8_t data;
-u_int8_t ID = 0x555;
+
+static const int ID = 0x555;
 
 //Semaphores
 
 
 //RTOS Tasks
 /*static void TWAI_CTRL(void *arg) { //Start & Stop of TWAI Drivers
-    if (twai_start() == ESP_OK) {
-        ESP_LOGI(NodeName,"Driver started\n");
-    } else {
-        ESP_LOGI(NodeName,"Failed to start driver\n");
-        return;
-    }
 
 } */
 
-static void TWAI_Transmit (void *arg) 
-    {
-    twai_message_t txData = {.identifier = ID, .data = data, .data_length_code = strlen(data)}
-    if (twai_transmit(txData,portMAX_DELAY) == ESP_OK) {
+static void TWAI_Transmit (void *arg) {
+    twai_message_t txData;
+    txData.identifier = ID;
+    txData.data_length_code = 4;
+    for (int i = 0; i < 4; i++) {
+    txData.data[i] = 0;
+    }
+    txData.self = 1;
+
+    if (twai_transmit(&txData,portMAX_DELAY) == ESP_OK) {
         ESP_LOGI(NodeName, "Message qued for transmission");
-        return;
     } else {
         ESP_LOGI(NodeName,"Error: Message not qued for tranmission"); //Add TWAI error code here
-        return;
     }
-    vtaskDelay(50/pdTICKS_TO_MS);
+    vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 static void TWAI_Recieve(void *arg) {
     twai_message_t rxData;
 
     //Recieve 
-    if (twai_receive(&rx_message,pdMS_TO_Ticks(100))== ESP_OK) {
+    if (twai_receive(&rxData,pdMS_TO_TICKS(1000))== ESP_OK) {
         printf("Messsage Recieved\n");
     } else {
         printf("Failed to recieve message\n");
-        return;
     }
-
-    
-
+    ESP_LOGI(NodeName,"Recieved Message: %s", rxData.data);
+    vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 void app_main(void) {
@@ -73,6 +69,14 @@ void app_main(void) {
         ESP_LOGI(NodeName, "Driver installed");
     } else {
         ESP_LOGI(NodeName,"Failed to install driver");
-        return;
     }
+    
+    if (twai_start() == ESP_OK) {
+        ESP_LOGI(NodeName,"Driver started\n");
+    } else {
+        ESP_LOGI(NodeName,"Failed to start driver\n");
+    }
+
+    xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,tskNO_AFFINITY);
 }
