@@ -37,16 +37,16 @@ static void BAT_CTRL(void *arg) { //Battery Control Task:
     QueueHandle_t SystemCTRL;
     SystemCTRL = xQueueCreate(10,sizeof(BMS_CTRL)); 
     if (SystemCTRL == 0) {
-        ESP_LOGI(SYS_LOG, "System Instruction Queue was not created ")
+        ESP_LOGI(SYS_LOG, "System Instruction Queue was not created ");
     }
     while (1) {
             //Add MOSFET/Bat Cell Control flow here (TO BE DECIDED)
     }
 } 
 
-static void TWAI_CTRL(void *arg) {
+//static void TWAI_CTRL(void *arg) {
 
-}
+//}
 
 static void TWAI_Transmit (void *arg) {
     QueueHandle_t TWAI_Transmit_queue;
@@ -56,22 +56,22 @@ static void TWAI_Transmit (void *arg) {
     }
     SysInst outData;
     while(1) {
-    if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE) { //Check que for message to be sent. 
-        twai_message_t txData; //Message structure init
-        txData.identifier = outData.id; 
-        txData.data_length_code = strlen(outData.inst);
-        for (int i = 0, i < txData.data_length_code, i++) { //Copy string into structure
-            txData.data[i] = outData.inst[i];
-        }
-        txData.self = 0;
-    } 
-    
-    if (twai_transmit(&txData,portMAX_DELAY) == ESP_OK) {
-        ESP_LOGI(TWAI, "Message qued for transmission");
-    } else {
-        ESP_LOGI(TWAI,"Error: Message not qued for tranmission"); //Add TWAI error code here
-    }
+        if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE) { //Check que for message to be sent. 
+            twai_message_t txData; //Message structure init
+            txData.identifier = outData.id; 
+            txData.data_length_code = strlen(outData.inst);
+            for (int i = 0; i < txData.data_length_code; i++) { //Copy data into structure (strcpy was giving errors)
+                txData.data[i] = outData.inst[i];
+            }
+            txData.self = 0;
+            if (twai_transmit(&txData,portMAX_DELAY) == ESP_OK) {
+                ESP_LOGI(TWAI, "Message qued for transmission");
+            } else {
+                ESP_LOGI(TWAI,"Error: Message not qued for tranmission"); //Add TWAI error code here
+            }
+        } 
     vTaskDelay(pdMS_TO_TICKS(500));
+    
     }
     
 }
@@ -106,7 +106,7 @@ void app_main(void) {
         ESP_LOGI(TWAI,"Failed to start driver\n");
     }
 
-    xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(BAT_CTRL, "Battery_Contol", 4096, NULL, BAT_CTRL_PRIO,tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,1);
+    xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,1);
+    xTaskCreatePinnedToCore(BAT_CTRL, "Battery_Contol", 4096, NULL, BAT_CTRL_PRIO,NULL,1);
 }     
