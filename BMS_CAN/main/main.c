@@ -60,7 +60,7 @@ static void TWAI_Transmit (void *arg) {
         twai_message_t txData; //Message structure init
         txData.identifier = outData.id; 
         txData.data_length_code = strlen(outData.inst);
-        for (i = 0, i < txData.data_length_code, i ++) { //Copy string into structure
+        for (int i = 0, i < txData.data_length_code, i++) { //Copy string into structure
             txData.data[i] = outData.inst[i];
         }
         txData.self = 0;
