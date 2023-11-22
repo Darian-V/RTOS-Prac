@@ -1,7 +1,7 @@
 {
     "version":            "1",
     "project_name":       "BMS_CAN",
-    "project_version":    "38ca7b8-dirty",
+    "project_version":    "94d40e7-dirty",
     "project_path":       "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN",
     "idf_path":           "C:/Users/Darian/esp/esp-idf",
     "build_dir":          "C:/Users/Darian/Desktop/RTOS-Prac/BMS_CAN/build",
