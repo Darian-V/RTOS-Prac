@@ -87,7 +87,7 @@ static void TWAI_Recieve(void *arg) {
         printf("Failed to recieve message\n");
     }
     ESP_LOGI(TWAI,"Recieved Message: %s", rxData.data);
-    vTaskDelay(pdMS_TO_TICKS(500)); 
+    vTaskDelay(pdMS_TO_TICKS(50)); //Check for incoming message every 500ms
     }
 }
 
