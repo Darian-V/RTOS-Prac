@@ -67,11 +67,10 @@ static void TWAI_Transmit (void *arg) {
             if (twai_transmit(&txData,portMAX_DELAY) == ESP_OK) {
                 ESP_LOGI(TWAI, "Message qued for transmission");
             } else {
-                ESP_LOGI(TWAI,"Error: Message not qued for tranmission"); //Add TWAI error code here
+                ESP_LOGI(TWAI,"Error: Message not qued for tranmission"); //TWAI adding to transmission queue error
             }
+            vTaskDelay(pdMS_TO_TICKS(50)); //Check for message to trasmit every 50ms
         } 
-    vTaskDelay(pdMS_TO_TICKS(500));
-    
     }
     
 }
