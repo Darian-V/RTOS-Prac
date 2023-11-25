@@ -27,14 +27,17 @@ static const char *SYS_LOG = "SYS_LOG:";
 
 //Control Flow Globals:
 typedef struct { //System Instruction Structure
-    uint8_t id; //Should limit to an 8 byte ID?
-    uint32_t inst; //System instructions up to 8 bytes (Probably should expand)
+    uint8_t id; //8 bit IDs
+    char inst[8]; //System instructions up to 8 bytes (Probably should expand)
 } SysInst; 
+
+QueueHandle_t SystemCTRL; //System Instruction Queue
+QueueHandle_t TWAI_Transmit_queue; //CAN Transmit Queue
+
 //RTOS Tasks
 
 static void BAT_CTRL(void *arg) { //Battery Control Task: 
     SysInst BMS_CTRL; //BMS Instruction Struct 
-    QueueHandle_t SystemCTRL;
     SystemCTRL = xQueueCreate(10,sizeof(struct SysInst *)); //Creation of System Instruction Queue
     if (SystemCTRL == 0) { //Error Check for Queue Creation
         ESP_LOGI(SYS_LOG, "System Instruction Queue was not created ");
@@ -50,7 +53,6 @@ static void BAT_CTRL(void *arg) { //Battery Control Task:
 //}
 
 static void TWAI_Transmit (void *arg) {
-    QueueHandle_t TWAI_Transmit_queue;
     TWAI_Transmit_queue = xQueueCreate(5, sizeof(struct twai_message_t *)); 
     if (TWAI_Transmit_queue == 0) { //Error Check for Queue Creation
         ESP_LOGI(SYS_LOG,"TWAI Transmit Queue was not created");
@@ -80,18 +82,18 @@ static void TWAI_Recieve(void *arg) {
     SysInst twaiRec;
     //Recieve 
     while (1) {
-    twai_message_t rxData;
-    if (twai_receive(&rxData,pdMS_TO_TICKS(1000))== ESP_OK) {
-        strcpy(twaiRec.id,rxData.identifier); //Adding incoming TWAI message to System Instruction strucutre. 
-        strcpy(twaiRec.inst,rxData.data);
-        ESP_LOGI(TWAI,"Message Recieved: %s",rxData.data);
-    } else {
-        ESP_LOGI(TWAI,"Error Recieving Message");
-    }
-    xQueueSend(SystemCTRL,(void*)&twaiRec,0); //Adding TWAI recieve data to System Control Queue
+        twai_message_t rxData;
+            if (twai_receive(&rxData,pdMS_TO_TICKS(1000))== ESP_OK) {
+                strcpy((void *) &twaiRec.id,(void *)&rxData.identifier); //Adding incoming TWAI message to System Instruction strucutre. 
+                strcpy((void *) &twaiRec.inst,(void * )&rxData.data);
+                ESP_LOGI(TWAI,"Message Recieved: %s",rxData.data);
+            } else {
+                ESP_LOGI(TWAI,"Error Recieving Message");
+            }
+        xQueueSend(SystemCTRL,(void*)&twaiRec,0); //Adding TWAI recieve data to System Control Queue
     
-     //Add data into System instruction queue
-    vTaskDelay(pdMS_TO_TICKS(50)); //Check for incoming message every 500ms
+         //Add data into System instruction queue
+        vTaskDelay(pdMS_TO_TICKS(50)); //Check for incoming message every 500ms
     }
 }
 
@@ -111,5 +113,5 @@ void app_main(void) {
 
     xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,1);
     xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,1);
-    xTaskCreatePinnedToCore(BAT_CTRL, "Battery_Contol", 4096, NULL, BAT_CTRL_PRIO,NULL,tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(BAT_CTRL, "Battery_Contol", 2048, NULL, BAT_CTRL_PRIO,NULL,0);
 }     
