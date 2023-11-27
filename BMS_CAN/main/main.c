@@ -35,9 +35,14 @@ typedef struct { //System Instruction Structure
 QueueHandle_t SystemCTRL; //System Instruction Queue
 QueueHandle_t TWAI_Transmit_queue; //CAN Transmit Queue
 
+SemaphoreHandle_t TWAI_TransmmitSem;
+SemaphoreHandle_t TWAI_RecieveSem;
+SemaphoreHandle_t TWAI_StartSem;
+
+
 //RTOS Tasks
 
-static void BAT_CTRL(void *arg) { //Battery Control Task: 
+void BAT_CTRL(void *arg) { //Battery Control Task: 
     SysInst BMS_CTRL; //BMS Instruction Struct 
     SystemCTRL = xQueueCreate(10,sizeof(struct SysInst *)); //Creation of System Instruction Queue
     if (SystemCTRL == 0) { //Error Check for Queue Creation
@@ -49,18 +54,23 @@ static void BAT_CTRL(void *arg) { //Battery Control Task:
     }
 } 
 
-//static void TWAI_CTRL(void *arg) {
+void TWAI_CTRL(void *arg) { //Maybe not necessary?
+    TWAI_StartSem = xSemaphoreCreate();
+    TWAI_TransmitSem = xSemaphoreCreateMutex();
+    TWAI_RecieveSem = xSemaphoreCreateMutex();
 
-//}
+    if (xSempahoreTake)
 
-static void TWAI_Transmit (void *arg) {
+}
+
+void TWAI_Transmit (void *arg) {
     TWAI_Transmit_queue = xQueueCreate(5, sizeof(struct twai_message_t *)); 
     if (TWAI_Transmit_queue == 0) { //Error Check for Queue Creation
         ESP_LOGI(SYS_LOG,"TWAI Transmit Queue was not created");
     }
     SysInst outData;
     while(1) {
-        if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE) { //Check que for message to be sent. 
+        if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE && xSemaphoreTake(TWAI_TransmitSem, pdMS_TO_TICKS(10)) == pdTRUE) { //Check que for message to be sent. 
             twai_message_t txData; //Message structure init
             txData.identifier = outData.id; 
             txData.data_length_code = strlen(outData.inst);
@@ -72,14 +82,15 @@ static void TWAI_Transmit (void *arg) {
                 ESP_LOGI(TWAI, "Message qued for transmission");
             } else {
                 ESP_LOGI(TWAI,"Error: Message not qued for tranmission"); //TWAI adding to transmission queue error
-            }    
+            }   
+            xSemaphoreGive(TWAI_TransmitSem); 
         } 
-        vTaskDelay(pdMS_TO_TICKS(50)); //Check for message to trasmit every 50ms
+        
     }
     
 }
 
-static void TWAI_Recieve(void *arg) {
+void TWAI_Recieve(void *arg) {
     SysInst twaiRec;
     //Recieve 
     while (1) {
@@ -111,7 +122,7 @@ void app_main(void) {
     } else {
         ESP_LOGI(TWAI,"Failed to start driver\n");
     }
-
+    xTaskCreatePinnedToCore(TWAI_CTRL, "TWAI_Control",1024, NULL, CTRL_TSK_PRIO,NULL,1);
     xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,1);
     xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,1);
     xTaskCreatePinnedToCore(BAT_CTRL, "Battery_Contol", 2048, NULL, BAT_CTRL_PRIO,NULL,0);
