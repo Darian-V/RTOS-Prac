@@ -1,3 +1,13 @@
+/**
+ * CSULB Lunabotics: RTOS Implementation BMS System (23-24 Season)
+ * 
+ * Battery Managment System including CAN Bus, Mosfet Drivers, and GPIO Interupt Functionality for sensor data input
+ * 
+ * Authors: Darian Victoria
+ * Date: 11/27/2023
+*/
+
+
 #include <stdio.h>
 #include <string.h>
 #include "driver/gpio.h"
@@ -23,7 +33,6 @@ static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 static const char *SYS_LOG = "SYS_LOG:"; 
 #define TX_TSK_PRIO 8 //Task Priority
 #define RX_TSK_PRIO 9
-#define CTRL_TSK_PRIO 10
 #define BAT_CTRL_PRIO 25
 
 //Control Flow Globals:
@@ -32,12 +41,11 @@ typedef struct { //System Instruction Structure
     char inst[8]; //System instructions up to 8 bytes (Probably should expand)
 } SysInst; 
 
-QueueHandle_t SystemCTRL; //System Instruction Queue
+QueueHandle_t SystemCTRL; //System Instruction Queue (Question:   Do we need a semaphore.  Can use just so that the )
 QueueHandle_t TWAI_Transmit_queue; //CAN Transmit Queue
 
-SemaphoreHandle_t TWAI_TransmmitSem;
-SemaphoreHandle_t TWAI_RecieveSem;
-SemaphoreHandle_t TWAI_StartSem;
+SemaphoreHandle_t TWAI_TransmmitSem; //Don't think is necessary. Can just use queue and will block when nothing is in the queue
+SemaphoreHandle_t SysCtrlSem;
 
 
 //RTOS Tasks
@@ -48,29 +56,29 @@ void BAT_CTRL(void *arg) { //Battery Control Task:
     if (SystemCTRL == 0) { //Error Check for Queue Creation
         ESP_LOGI(SYS_LOG, "System Instruction Queue was not created ");
     }
+
+    TWAI_TransmitSem = xSemaphoreCreateBinary();
+    SysCtrlSem = xSemaphoreCreateCounting(2, 0);
     while (1) {
         xQueueReceive(SystemCTRL,(void*)&BMS_CTRL,0); //Recieve data from System Instruction Queue
+        
+        //Some sort of message unpacking from Queue
+
         //Add MOSFET/Bat Cell Control flow here (TO BE DECIDED)
+            //Ideas:
+                //Switch Block Implementation
+                
     }
 } 
 
-void TWAI_CTRL(void *arg) { //Maybe not necessary?
-    TWAI_StartSem = xSemaphoreCreate();
-    TWAI_TransmitSem = xSemaphoreCreateMutex();
-    TWAI_RecieveSem = xSemaphoreCreateMutex();
-
-    if (xSempahoreTake)
-
-}
-
 void TWAI_Transmit (void *arg) {
-    TWAI_Transmit_queue = xQueueCreate(5, sizeof(struct twai_message_t *)); 
+    TWAI_Transmit_queue = xQueueCreate(3, sizeof(struct twai_message_t *)); 
     if (TWAI_Transmit_queue == 0) { //Error Check for Queue Creation
         ESP_LOGI(SYS_LOG,"TWAI Transmit Queue was not created");
     }
     SysInst outData;
     while(1) {
-        if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE && xSemaphoreTake(TWAI_TransmitSem, pdMS_TO_TICKS(10)) == pdTRUE) { //Check que for message to be sent. 
+        if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE && xSemaphoreTake(TWAI_TransmitSem, portMAX_DELAY()) == pdTRUE) { //Check que for message to be sent. 
             twai_message_t txData; //Message structure init
             txData.identifier = outData.id; 
             txData.data_length_code = strlen(outData.inst);
@@ -85,7 +93,6 @@ void TWAI_Transmit (void *arg) {
             }   
             xSemaphoreGive(TWAI_TransmitSem); 
         } 
-        
     }
     
 }
@@ -105,7 +112,8 @@ void TWAI_Recieve(void *arg) {
         xQueueSend(SystemCTRL,(void*)&twaiRec,0); //Adding TWAI recieve data to System Control Queue
     
          //Add data into System instruction queue
-        vTaskDelay(pdMS_TO_TICKS(50)); //Check for incoming message every 500ms
+        vTaskDelay(pdMS_TO_TICKS(50)); //Check for incoming message every 50ms
+
     }
 }
 
@@ -122,8 +130,7 @@ void app_main(void) {
     } else {
         ESP_LOGI(TWAI,"Failed to start driver\n");
     }
-    xTaskCreatePinnedToCore(TWAI_CTRL, "TWAI_Control",1024, NULL, CTRL_TSK_PRIO,NULL,1);
-    xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,1);
+    xTaskCreatePinnedToCore(TWAI_Recieve, "BMS_REC",4096,NULL,RX_TSK_PRIO,NULL,1); //Reminder to tune memory allocation
     xTaskCreatePinnedToCore(TWAI_Transmit,"BMS_TRAN",4096,NULL,TX_TSK_PRIO,NULL,1);
     xTaskCreatePinnedToCore(BAT_CTRL, "Battery_Contol", 2048, NULL, BAT_CTRL_PRIO,NULL,0);
 }     
