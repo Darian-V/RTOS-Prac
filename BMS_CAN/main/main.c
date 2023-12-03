@@ -35,10 +35,11 @@ static const char *SYS_LOG = "SYS_LOG:";
 #define RX_TSK_PRIO 9
 #define BAT_CTRL_PRIO 25
 
+
 //Control Flow Globals:
 typedef struct { //System Instruction Structure
-    uint8_t id; //Should limit to an 8 byte ID?
-    uint32_t inst; //System instructions up to 8 bytes (Probably should expand)
+    int id; //Should limit to an 8 byte ID?
+    uint8_t inst[8]; //System instructions up to 8 bytes (Probably should expand)
 } SysInst; 
 
 QueueHandle_t SystemCTRL; //System Instruction Queue (Question:   Do we need a semaphore.  Can use just so that the )
@@ -58,7 +59,6 @@ void BAT_CTRL(void *arg) { //Battery Control Task:
         ESP_LOGI(SYS_LOG, "System Instruction Queue was not created ");
     }
 
-    TWAI_TransmitSem = xSemaphoreCreateBinary();
     SysCtrlSem = xSemaphoreCreateCounting(2, 0);
     while (1) {
         xQueueReceive(SystemCTRL,(void*)&BMS_CTRL,0); //Recieve data from System Instruction Queue
@@ -79,10 +79,10 @@ void TWAI_Transmit (void *arg) {
     }
     SysInst outData;
     while(1) {
-        if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE && xSemaphoreTake(TWAI_TransmitSem, portMAX_DELAY()) == pdTRUE) { //Check que for message to be sent. 
+        if (xQueueReceive(TWAI_Transmit_queue, (void*)&outData,0) == pdTRUE) { //Check que for message to be sent. 
             twai_message_t txData; //Message structure init
             txData.identifier = outData.id; 
-            txData.data_length_code = strlen(outData.inst);
+            txData.data_length_code = sizeof(outData.inst)/sizeof(uint8_t);
             for (int i = 0; i < txData.data_length_code; i++) { //Copy data into structure (strcpy was giving errors)
                 txData.data[i] = outData.inst[i];
             }
@@ -92,7 +92,6 @@ void TWAI_Transmit (void *arg) {
             } else {
                 ESP_LOGI(TWAI,"Error: Message not qued for tranmission"); //TWAI adding to transmission queue error
             }   
-            xSemaphoreGive(TWAI_TransmitSem); 
         } 
     }
     
@@ -104,8 +103,7 @@ void TWAI_Recieve(void *arg) {
     while (1) {
     twai_message_t rxData;
     if (twai_receive(&rxData,pdMS_TO_TICKS(1000))== ESP_OK) {
-        strcpy(twaiRec.id,rxData.identifier); //Adding incoming TWAI message to System Instruction strucutre. 
-        strcpy(twaiRec.inst,rxData.data);
+        
         ESP_LOGI(TWAI,"Message Recieved: %s",rxData.data);
     } else {
         ESP_LOGI(TWAI,"Error Recieving Message");
